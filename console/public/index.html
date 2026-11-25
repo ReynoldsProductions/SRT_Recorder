@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>C2C Console</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>C2C Console</h1>
+    <form id="shoot-form" class="shoot" autocomplete="off">
+      <label for="shoot-name">Shoot</label>
+      <input id="shoot-name" name="shoot" maxlength="48" placeholder="e.g. 2026-11-24_Promo" required>
+      <button type="submit">New shoot</button>
+    </form>
+    <div class="all-btns">
+      <button id="start-all" type="button" class="rec-all">● Start all</button>
+      <button id="stop-all" type="button" class="secondary">■ Stop all</button>
+    </div>
+    <span id="conn" class="pill pill-muted">connecting…</span>
+    <span id="clock" class="clock"></span>
+  </header>
+  <div id="banner" class="banner" hidden></div>
+  <main>
+    <section>
+      <div class="section-head">
+        <h2>Inputs <small id="save-root"></small></h2>
+        <button id="add-input" type="button">+ Add input</button>
+      </div>
+      <div id="inputs" class="grid"></div>
+      <p id="no-inputs" class="muted" hidden>No inputs yet — use “Add input” to create one, then point a camera at it.</p>
+    </section>
+    <section>
+      <div class="section-head">
+        <h2>Recordings</h2>
+        <label class="check"><input type="checkbox" id="show-all"> Show cleared</label>
+        <button id="clear-list" type="button" class="secondary">Clear list</button>
+      </div>
+      <p class="muted small"><span id="share-line" hidden>Files are on <code id="share-url"></code>. </span>Clearing the list only hides entries here — files on disk are never deleted.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Clip</th><th>Take</th><th>Input</th><th>Start (local)</th><th>Duration</th><th>Size</th><th>File</th></tr></thead>
+          <tbody id="recordings"><tr><td colspan="7" class="muted">loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <template id="input-card">
+    <article class="card">
+      <div class="card-head">
+        <div>
+          <h3 class="name"></h3>
+          <div class="label muted small"></div>
+        </div>
+        <span class="signal pill"></span>
+      </div>
+      <div class="relay muted small"></div>
+      <div class="preview">
+        <video muted playsinline></video>
+        <div class="preview-bar">
+          <span class="preview-status muted">off</span>
+          <button type="button" class="preview-audio secondary small-btn" title="Toggle preview audio">🔇</button>
+          <button type="button" class="preview-toggle secondary small-btn">Preview on</button>
+        </div>
+      </div>
+      <dl class="meta">
+        <dt>Video</dt><dd class="video">—</dd>
+        <dt>Audio</dt><dd class="audio">—</dd>
+        <dt>Bitrate</dt><dd class="bitrate">—</dd>
+        <dt>Connected</dt><dd class="uptime">—</dd>
+      </dl>
+      <div class="rec">
+        <label class="clip-label">Clip name
+          <input class="clip-name" maxlength="48" placeholder="e.g. interview" autocomplete="off">
+        </label>
+        <div class="take-row small">
+          <span class="take muted"></span>
+          <button type="button" class="take-reset secondary small-btn">Reset take</button>
+        </div>
+        <div class="dest muted small"></div>
+        <div class="rec-status"><span class="rec-dot"></span><span class="rec-text">Not recording</span></div>
+        <div class="rec-detail muted"></div>
+        <button class="rec-btn" type="button">● Start recording</button>
+      </div>
+      <details class="camera-setup">
+        <summary>Camera setup</summary>
+        <dl class="meta">
+          <dt>URL</dt><dd class="cam-url"></dd>
+          <dt>Port</dt><dd class="cam-port"></dd>
+          <dt>Encryption</dt><dd>AES-128 (or AES-256)</dd>
+          <dt>Passphrase</dt><dd><code class="cam-pass">••••••••</code> <button type="button" class="cam-reveal secondary small-btn">Reveal</button></dd>
+          <dt>Latency</dt><dd class="cam-latency"></dd>
+        </dl>
+        <p class="muted small">Sony FX: enter the URL exactly as shown (nothing after the IP) and the port in its own field.</p>
+        <div class="setup-btns">
+          <button type="button" class="edit-input secondary small-btn">Edit</button>
+          <button type="button" class="regen-pass secondary small-btn">New passphrase</button>
+          <button type="button" class="remove-input danger small-btn">Remove</button>
+        </div>
+      </details>
+    </article>
+  </template>
+
+  <dialog id="input-dialog">
+    <form method="dialog" id="input-form" autocomplete="off">
+      <h3 id="input-dialog-title">Add input</h3>
+      <label>Name (used in folders &amp; files)
+        <input name="name" required maxlength="24" pattern="[a-z0-9][a-z0-9_\-]*" placeholder="cam2">
+      </label>
+      <label>Label (optional)
+        <input name="label" maxlength="48" placeholder="FX2 B-cam, wide">
+      </label>
+      <label>Relay port <span class="muted small" id="port-range"></span>
+        <input name="port" type="number" required>
+      </label>
+      <label>SRT latency (ms)
+        <input name="latencyMs" type="number" min="20" max="8000" value="1000" required>
+      </label>
+      <label class="check"><input name="enabled" type="checkbox" checked> Enabled (relay listening)</label>
+      <p class="muted small">A strong passphrase is generated automatically — see “Camera setup” on the card.</p>
+      <div class="dialog-btns">
+        <button value="cancel" type="button" id="input-cancel" class="secondary">Cancel</button>
+        <button value="save" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="vendor/hls.min.js"></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

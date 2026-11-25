@@ -1,0 +1,71 @@
+# SRT_Recorder — OvenMediaEngine + SRT relay + engineer console.
+#
+#   cp .env.example .env   # then fill in every CHANGE_ME (see docs/OPERATIONS.md)
+#   docker compose up -d --build
+#
+# Exposed to the LAN: the relay's SRT input range (UDP) and the console (TCP 3020).
+# Do NOT port-forward these to the internet. OME's own ports stay on the internal network.
+
+name: srt-recorder
+
+services:
+  ovenmediaengine:
+    image: ovenmedialabs/ovenmediaengine:v0.21.0
+    container_name: ovenmediaengine
+    environment:
+      - OME_API_TOKEN=${OME_API_TOKEN:?set OME_API_TOKEN in .env}
+    volumes:
+      - ./ovenmediaengine/Server.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
+      - ${RECORDINGS_DIR:?set RECORDINGS_DIR in .env}:/recordings
+    restart: unless-stopped
+
+  c2c-console:
+    build: ../console
+    image: c2c-console:0.3.0
+    container_name: c2c-console
+    ports:
+      - "${CONSOLE_PORT:-3020}:3020"
+    environment:
+      - CONSOLE_PASSWORD=${C2C_CONSOLE_PASSWORD:?set C2C_CONSOLE_PASSWORD in .env}
+      - API_KEY=${C2C_API_KEY:-}
+      - OME_API_URL=http://ovenmediaengine:8081
+      - OME_ACCESS_TOKEN=${OME_API_TOKEN}
+      - OME_PREVIEW_URL=http://ovenmediaengine:3333
+      - INPUTS=${SEED_INPUTS:-cam1:8897}
+      - INPUTS_FILE=/data/inputs.json
+      - STATE_FILE=/data/state.json
+      - RELAY_PORT_MIN=${RELAY_PORT_MIN:-8897}
+      - RELAY_PORT_MAX=${RELAY_PORT_MAX:-8912}
+      - RELAY_STATUS_URL=http://c2c-relay:8090
+      - PUBLIC_HOST=${PUBLIC_HOST:-}
+      - RECORDINGS_SHARE=${RECORDINGS_SHARE:-}
+      - RECORDINGS_DIR=/recordings
+      - TZ=${TZ:-UTC}
+    volumes:
+      - ${RECORDINGS_DIR}:/recordings:ro
+      - ${C2C_DATA_DIR:-./data}:/data
+    depends_on:
+      - ovenmediaengine
+    restart: unless-stopped
+
+  c2c-relay:
+    build:
+      context: ../console
+      dockerfile: Dockerfile.relay
+    image: c2c-relay:0.3.0
+    container_name: c2c-relay
+    ports:
+      # Must match RELAY_PORT_MIN..RELAY_PORT_MAX (one UDP port per input).
+      - "${RELAY_PORT_MIN:-8897}-${RELAY_PORT_MAX:-8912}:${RELAY_PORT_MIN:-8897}-${RELAY_PORT_MAX:-8912}/udp"
+    environment:
+      - INPUTS_FILE=/data/inputs.json
+      - RELAY_PORT_MIN=${RELAY_PORT_MIN:-8897}
+      - RELAY_PORT_MAX=${RELAY_PORT_MAX:-8912}
+      - OME_SRT_HOST=ovenmediaengine
+      - OME_SRT_PORT=9999
+    volumes:
+      - ${C2C_DATA_DIR:-./data}:/data:ro
+    depends_on:
+      - ovenmediaengine
+      - c2c-console
+    restart: unless-stopped

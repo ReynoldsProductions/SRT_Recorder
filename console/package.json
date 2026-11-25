@@ -1,0 +1,13 @@
+{
+  "name": "c2c-console",
+  "version": "0.3.0",
+  "description": "Camera2Cloud engineer console: SRT input monitoring and record control over OvenMediaEngine",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test --experimental-test-coverage --test-coverage-exclude=test/** test/*.test.js"
+  },
+  "engines": { "node": ">=22" }
+}

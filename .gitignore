@@ -1,0 +1,29 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime data
+deploy/data/
+data/
+recordings/
+# recorded media (MPEG-TS) — only under media folders, so TypeScript sources aren't affected
+**/recordings/**/*.ts
+*.pcap
+*.pcapng
+
+# Build output / deps
+node_modules/
+dist/
+pkg/
+*.tgz
+.yarn/
+coverage/
+
+# OS / editor
+.DS_Store
+._*
+.vscode/
+.idea/

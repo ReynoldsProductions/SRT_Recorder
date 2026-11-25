@@ -1,0 +1,37 @@
+# REFERENCE ONLY — MediaMTX was evaluated and FAILED with the Sony FX2 (see docs/FINDINGS.md):
+# it keeps a single H.264 PPS, and the FX2 sends several per GOP, so ~5% of recorded frames are
+# undecodable (fMP4 and MPEG-TS, v1.21.3 and v1.21.4). Kept for comparison / re-testing.
+
+logLevel: info
+
+# API and metrics are NOT published to the host — only reachable from inside the
+# ai-network docker network (e.g. by the ts-mediamtx Tailscale sidecar).
+api: yes
+apiAddress: :9997
+metrics: yes
+metricsAddress: :9998
+
+# Only SRT is needed for this test — everything else stays off to minimize surface.
+rtsp: no
+rtmp: no
+hls: no
+webrtc: no
+playback: no
+
+srt: yes
+srtAddress: :8890
+
+pathDefaults:
+  record: false
+
+paths:
+  # Camera publishes here: srt://<server-ip>:8890?streamid=publish:cam1&passphrase=<see Vaultwarden>
+  # Verify the actual stream-ID syntax your camera sends — Sony's Creators' App
+  # compatibility with this syntax is NOT confirmed, per the test plan (Phase 1, step 2).
+  cam1:
+    source: publisher
+    srtPublishPassphrase: CHANGE_ME_16_to_79_letters_digits
+    record: true
+    recordFormat: mpegts  # fmp4 drops the FX2's extra in-band PPS -> ~5% undecodable frames (2026-11-24 test)
+    recordPath: /recordings/%path/%Y-%m-%d_%H-%M-%S-%f_%z
+    recordDeleteAfter: 0s
