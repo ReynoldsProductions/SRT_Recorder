@@ -2,8 +2,11 @@
 <!--
   OvenMediaEngine config for SRT_Recorder (tested with ovenmedialabs/ovenmediaengine:v0.21.0).
 
-  - SRT provider on :9999 has NO passphrase: never publish it to the host/LAN. Only c2c-relay
-    (which terminates camera encryption) should reach it, over the internal docker network.
+  - SRT provider on :9999 requires its own "backhaul" passphrase (OME_SRT_PASSPHRASE, distinct
+    from each camera's own passphrase), set via the Options/SRTO_PASSPHRASE socket option below.
+    This hop was unauthenticated when relay and OME shared one Docker network, but c2c-relay can
+    now run on a separate host (e.g. a DMZ box), so this leg can cross a real network boundary.
+    Never publish this port to the host/LAN regardless — only c2c-relay should reach it.
   - FILE publisher: recordings are started/stopped by c2c-console via the REST API with
     per-recording filePath/infoPath; the FilePath below is only the fallback pattern.
     Use "hh" (not "HH") for hours in ${StartTime:...} tokens.
@@ -40,6 +43,16 @@
 			<SRT>
 				<Port>9999</Port>
 				<WorkerCount>1</WorkerCount>
+				<Options>
+					<Option>
+						<Key>SRTO_PBKEYLEN</Key>
+						<Value>16</Value>
+					</Option>
+					<Option>
+						<Key>SRTO_PASSPHRASE</Key>
+						<Value>${env:OME_SRT_PASSPHRASE}</Value>
+					</Option>
+				</Options>
 			</SRT>
 		</Providers>
 		<Publishers>

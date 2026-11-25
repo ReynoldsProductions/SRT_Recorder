@@ -50,7 +50,12 @@ export function createManager({ readInputs, target, makeSupervisor = createSuper
 if (import.meta.url === `file://${process.argv[1]}`) {
   const file = process.env.INPUTS_FILE || '/data/inputs.json';
   const range = { portMin: Number(process.env.RELAY_PORT_MIN || 8897), portMax: Number(process.env.RELAY_PORT_MAX || 8912) };
-  const target = { omeHost: process.env.OME_SRT_HOST || 'ovenmediaengine', omePort: Number(process.env.OME_SRT_PORT || 9999), app: process.env.OME_APP || 'app' };
+  const target = {
+    omeHost: process.env.OME_SRT_HOST || 'ovenmediaengine',
+    omePort: Number(process.env.OME_SRT_PORT || 9999),
+    app: process.env.OME_APP || 'app',
+    passphrase: process.env.OME_SRT_PASSPHRASE || undefined,
+  };
   const manager = createManager({ readInputs: async () => parseInputsFile(await readFile(file, 'utf8'), range), target });
   await manager.reconcile();
   setInterval(manager.reconcile, Number(process.env.RECONCILE_MS || 2000));

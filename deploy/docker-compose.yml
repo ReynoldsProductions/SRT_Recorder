@@ -14,6 +14,7 @@ services:
     container_name: ovenmediaengine
     environment:
       - OME_API_TOKEN=${OME_API_TOKEN:?set OME_API_TOKEN in .env}
+      - OME_SRT_PASSPHRASE=${OME_SRT_PASSPHRASE:?set OME_SRT_PASSPHRASE in .env}
     volumes:
       - ./ovenmediaengine/Server.xml:/opt/ovenmediaengine/bin/origin_conf/Server.xml:ro
       - ${RECORDINGS_DIR:?set RECORDINGS_DIR in .env}:/recordings
@@ -64,6 +65,7 @@ services:
       - RELAY_PORT_MAX=${RELAY_PORT_MAX:-8912}
       - OME_SRT_HOST=ovenmediaengine
       - OME_SRT_PORT=9999
+      - OME_SRT_PASSPHRASE=${OME_SRT_PASSPHRASE:?set OME_SRT_PASSPHRASE in .env}
     volumes:
       - ${C2C_DATA_DIR:-./data}:/data:ro
     depends_on:

@@ -5,15 +5,19 @@ import { spawn as nodeSpawn } from 'node:child_process';
 
 export const redact = (line) => line.replace(/passphrase=[^&'"\s]*/g, 'passphrase=<redacted>');
 
-export function buildFfmpegArgs(input, { omeHost, omePort, app }) {
+export function buildFfmpegArgs(input, { omeHost, omePort, app, passphrase }) {
   const streamId = encodeURIComponent(`srt://${omeHost}:${omePort}/${app}/${input.name}`);
+  // target.passphrase is the backhaul secret for this hop (relay -> OME), independent of each
+  // camera's own passphrase above. Only set once this leg crosses a real network boundary (e.g.
+  // the relay running on a separate DMZ host) instead of staying on one Docker network.
+  const outSuffix = passphrase ? `&passphrase=${passphrase}` : '';
   return [
     '-hide_banner', '-nostats', '-loglevel', 'info',
     // Short probe + real-time pacing: avoids bursting the probe buffer into the server.
     '-analyzeduration', '2000000', '-probesize', '5000000', '-re',
     '-i', `srt://0.0.0.0:${input.port}?mode=listener&latency=${input.latencyMs * 1000}&passphrase=${input.passphrase}`,
     '-map', '0', '-c', 'copy', '-f', 'mpegts',
-    `srt://${omeHost}:${omePort}?streamid=${streamId}&latency=200000`,
+    `srt://${omeHost}:${omePort}?streamid=${streamId}&latency=200000${outSuffix}`,
   ];
 }
 
