@@ -33,7 +33,7 @@ export function fakeOme(ome) {
   };
 }
 
-export async function startTestApp({ clock, listRecordings = async () => [], relayStatus } = {}) {
+export async function startTestApp({ clock, listRecordings = async () => [], relayStatus, throttle, log = quietLog, configExtra = {} } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'c2c-app-'));
   const publicDir = join(dir, 'public');
   const recDir = join(dir, 'rec');
@@ -41,7 +41,7 @@ export async function startTestApp({ clock, listRecordings = async () => [], rel
   await writeFile(join(publicDir, 'index.html'), '<!doctype html><title>t</title>');
   const config = {
     consoleUser: 'engineer', consolePassword: PASS, apiKey: API_KEY, staleAfterMs: 5000, omeApp: 'app',
-    omePreviewUrl: 'http://ome:3333', recordingsDir: recDir, publicHost: '10.0.0.5', relayPortMin: 8897, relayPortMax: 8899,
+    omePreviewUrl: 'http://ome:3333', recordingsDir: recDir, publicHost: '10.0.0.5', relayPortMin: 8897, relayPortMax: 8899, ...configExtra,
   };
   const ome = { live: new Set(['cam1']), records: [], starts: [] };
   const state = createStateStore(join(dir, 'state.json'), { log: quietLog });
@@ -51,7 +51,7 @@ export async function startTestApp({ clock, listRecordings = async () => [], rel
   await inputs.load();
   const recording = createRecordingService({ config, ome: fakeOme(ome), state, inputs, relayStatus, clock, log: quietLog });
   const fetchImpl = async (u) => new Response(`proxied ${u}`, { status: 200, headers: { 'content-type': 'application/vnd.apple.mpegurl' } });
-  const server = createServer(createApp({ config, recording, inputs, state, publicDir, listRecordings, fetchImpl, log: quietLog }));
+  const server = createServer(createApp({ config, recording, inputs, state, publicDir, listRecordings, fetchImpl, log, ...(throttle ? { throttle } : {}) }));
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   const get = (path, headers = { Authorization: AUTH }) => fetch(base + path, { headers });

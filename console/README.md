@@ -24,7 +24,8 @@ No npm dependencies (Node built-ins only). hls.js 1.5.20 is vendored in `public/
 | Variable | Required | Default | Notes |
 |---|---|---|---|
 | `CONSOLE_PASSWORD` | yes | — | HTTP Basic password for user `CONSOLE_USER` (default `engineer`), at least 12 chars |
-| `API_KEY` | no | — | Bearer key for machine clients (Companion), at least 24 chars |
+| `API_KEY` | no | — | Bearer key for machine clients (Companion), at least 24 chars. Refused on `/api/config/*` |
+| `TRUST_PROXY` | no | off | `1` only behind your own reverse proxy: use the rightmost `X-Forwarded-For` as the client address for throttling/audit |
 | `OME_API_URL`, `OME_ACCESS_TOKEN` | yes | — | OME REST API (`http://ovenmediaengine:8081`) + its `<AccessToken>` |
 | `OME_PREVIEW_URL` | no | — | OME LL-HLS base (`http://ovenmediaengine:3333`) to enable the preview |
 | `INPUTS_FILE` | no | `/data/inputs.json` | Input registry (shared read-only with `c2c-relay`). Mode 0600 |
@@ -42,7 +43,8 @@ Relay: `INPUTS_FILE`, `RELAY_PORT_MIN/MAX`, `OME_SRT_HOST` (`ovenmediaengine`), 
 ## API
 
 All responses use `{ success, data, error }`. Auth: HTTP Basic (browser) or `Authorization: Bearer <API_KEY>`.
-Basic-auth POSTs must send `X-C2C-Request: 1` (CSRF guard). Bearer clients are exempt.
+Basic-auth POSTs must send `X-C2C-Request: 1` (CSRF guard). Bearer clients are exempt, but the API key gets 403 on every `/api/config/*` route.
+After 8 failed logins from one address in 10 minutes, that address gets 429 for 5 minutes.
 
 | Method | Path | |
 |---|---|---|

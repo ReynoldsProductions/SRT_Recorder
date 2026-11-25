@@ -39,6 +39,7 @@ services:
       - RELAY_STATUS_URL=http://c2c-relay:8090
       - PUBLIC_HOST=${PUBLIC_HOST:-}
       - RECORDINGS_SHARE=${RECORDINGS_SHARE:-}
+      - TRUST_PROXY=${C2C_TRUST_PROXY:-}
       - RECORDINGS_DIR=/recordings
       - TZ=${TZ:-UTC}
     volumes:

@@ -7,6 +7,7 @@ import { authenticate } from './auth.js';
 import { HttpError } from './recording.js';
 import { InputConfigError, generatePassphrase } from './inputs-config.js';
 import { parsePreviewPath, proxyPreview } from './preview.js';
+import { createThrottle } from './throttle.js';
 
 export { checkBasicAuth } from './auth.js';
 
@@ -59,7 +60,17 @@ const cameraSettings = (input, host) => ({
   latencyMs: input.latencyMs,
 });
 
-export function createApp({ config, recording, inputs, state, listRecordings, publicDir, fetchImpl = fetch, log = console }) {
+// Client address for throttling/audit. X-Forwarded-For is honoured (rightmost entry, i.e. the one
+// our own reverse proxy appended) only when TRUST_PROXY is set; otherwise anyone could spoof it.
+function clientIp(req, trustProxy) {
+  if (trustProxy) {
+    const last = String(req.headers['x-forwarded-for'] ?? '').split(',').pop().trim();
+    if (last) return last;
+  }
+  return req.socket?.remoteAddress || 'unknown';
+}
+
+export function createApp({ config, recording, inputs, state, listRecordings, publicDir, fetchImpl = fetch, log = console, throttle = createThrottle() }) {
   async function recordings(showAll) {
     const all = await listRecordings();
     const { clearedAt } = state.get();
@@ -126,8 +137,11 @@ export function createApp({ config, recording, inputs, state, listRecordings, pu
     }
   }
 
-  async function routeApi(req, res, url, authKind) {
+  async function routeApi(req, res, url, authKind, ip) {
     const { pathname } = url;
+    // The API key exists for Companion (status + record control). It must not read or change the
+    // input registry: that API returns every camera's SRT passphrase.
+    if (authKind === 'bearer' && pathname.startsWith('/api/config/')) throw new HttpError(403, 'API key cannot access /api/config');
     if (req.method === 'GET') {
       if (pathname === '/api/inputs') return ok(res, await recording.statuses());
       if (pathname === '/api/status') return ok(res, { shoot: state.get().shoot, clearedAt: state.get().clearedAt, inputs: await recording.statuses() });
@@ -142,6 +156,8 @@ export function createApp({ config, recording, inputs, state, listRecordings, pu
     // without a CORS preflight, which this server never approves. Bearer (API key) clients are
     // not ambient-credential based, so they're exempt.
     if (authKind === 'basic' && req.headers['x-c2c-request'] !== '1') throw new HttpError(403, 'missing X-C2C-Request header');
+
+    log.info(`[audit] ${authKind} ${ip} ${req.method} ${pathname}`);
 
     if (pathname === '/api/shoot') {
       const s = await recording.setShoot((await readJson(req)).shoot);
@@ -171,12 +187,22 @@ export function createApp({ config, recording, inputs, state, listRecordings, pu
 
     if (pathname === '/healthz') return ok(res, { status: 'ok' });
 
+    const ip = clientIp(req, config.trustProxy);
+    const wait = throttle.retryAfter(ip);
+    if (wait) return send(res, 429, 'too many failed logins — try again later', { 'Retry-After': String(wait) });
+
     const authKind = authenticate(req.headers, config);
     if (!authKind) {
+      // A request with no credentials is just the browser's first visit; only wrong credentials count.
+      if (req.headers.authorization) {
+        const locked = throttle.fail(ip);
+        log.error(`[auth] failed login from ${ip}${locked ? ' — locked out' : ''}`);
+      }
       return send(res, 401, 'authentication required', { 'WWW-Authenticate': 'Basic realm="c2c-console", charset="UTF-8"' });
     }
+    throttle.succeed(ip);
 
-    if (pathname.startsWith('/api/')) return routeApi(req, res, url, authKind);
+    if (pathname.startsWith('/api/')) return routeApi(req, res, url, authKind, ip);
 
     const preview = req.method === 'GET' && config.omePreviewUrl ? parsePreviewPath(pathname, config.omeApp ?? 'app') : null;
     if (preview) {

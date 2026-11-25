@@ -62,6 +62,19 @@ Variables include `<input>_button_line` (`● T002 00:01:23` while recording, `n
 
 Use `docker compose up -d` (not `restart`) after editing `.env` so the containers get the new values.
 
+## Access control
+
+- **People** use HTTP Basic (`engineer` / `C2C_CONSOLE_PASSWORD`). **Companion** uses the Bearer `C2C_API_KEY`.
+- The API key is limited to status and record control: every `/api/config/*` route (input registry, which returns
+  the camera SRT passphrases) answers 403 to it. Manage inputs from the browser.
+- **Lockout:** 8 failed logins from one address within 10 minutes locks that address out (429) for 5 minutes.
+  The counter is in memory, so restarting `c2c-console` clears it.
+- **Audit log:** every state-changing API call is logged as `[audit] <basic|bearer> <ip> <METHOD> <path>`, failed
+  logins as `[auth] failed login from <ip>`. View with `docker compose logs c2c-console | grep -E '\[(audit|auth)\]'`.
+- **Reverse proxy:** behind a proxy every client shares the proxy's address, so one bad actor would lock everyone out.
+  Set `C2C_TRUST_PROXY=1` there so the rightmost `X-Forwarded-For` entry (the one your proxy appends) is used instead.
+  Leave it unset when clients connect directly, or anyone can forge the header.
+
 ## Diagnostics
 
 - Did the camera send anything? `sudo tcpdump -i <iface> -nn 'udp port <input-port> and host <camera-ip>'`.

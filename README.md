@@ -18,7 +18,7 @@ Sony FX2 / any SRT caller ──AES SRT──▶ c2c-relay (one UDP port per cam
 
 | Path | What |
 |---|---|
-| [`console/`](console/) | **c2c-console** (web UI + API) and **c2c-relay** (SRT relay manager). Node, no npm dependencies. 53 tests |
+| [`console/`](console/) | **c2c-console** (web UI + API) and **c2c-relay** (SRT relay manager). Node, no npm dependencies. 62 tests |
 | [`companion-module/`](companion-module/) | Bitfocus Companion v5 module (`@companion-module/base` 2.x). Start/stop/toggle, shoot/clip/take naming, tally, variables, presets |
 | [`deploy/`](deploy/) | `docker-compose.yml`, `.env.example`, OvenMediaEngine `Server.xml` |
 | [`docs/FINDINGS.md`](docs/FINDINGS.md) | Test results: Sony FX2 SRT behavior, MediaMTX vs OvenMediaEngine |
