@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  console:
+    name: Console tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+      # No npm dependencies: node built-ins only.
+      - run: npm test
+
+  companion:
+    name: Companion module build, lint, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: companion-module
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          # Must match the runtime in companion/manifest.json
+          node-version: 26.x
+      - run: corepack enable
+      - run: yarn install --immutable
+        env:
+          CI: true
+      - run: yarn build
+      - run: yarn lint
+      - run: yarn test
