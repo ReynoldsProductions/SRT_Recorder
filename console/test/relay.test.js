@@ -31,6 +31,14 @@ test('ffmpeg args: listener with passphrase+latency, stream copy, OME stream id'
   assert.ok(args.includes('-re'));
 });
 
+test('ffmpeg args: backhaul passphrase appended to the OME leg only when set', () => {
+  assert.equal(buildFfmpegArgs(input, target).at(-1).endsWith('&latency=200000'), true, 'no passphrase param by default');
+  const withPass = buildFfmpegArgs(input, { ...target, passphrase: 'backhaul-secret' });
+  assert.ok(withPass.at(-1).endsWith('&latency=200000&passphrase=backhaul-secret'));
+  // the camera's own passphrase (input leg) is unaffected and distinct
+  assert.ok(withPass.includes(`srt://0.0.0.0:${input.port}?mode=listener&latency=${input.latencyMs * 1000}&passphrase=${input.passphrase}`));
+});
+
 test('redact hides passphrases in log lines', () => {
   assert.equal(redact("from 'srt://0.0.0.0:1?passphrase=secret&x=1'"), "from 'srt://0.0.0.0:1?passphrase=<redacted>&x=1'");
 });

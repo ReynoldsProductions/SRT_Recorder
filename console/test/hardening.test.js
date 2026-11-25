@@ -28,6 +28,18 @@ test('API key cannot read or change the input registry (passphrases)', async () 
   assert.equal((await t.get('/api/config/inputs')).status, 200);
 });
 
+test('API key CAN toggle the listener, but the response never carries a passphrase', async () => {
+  const bearer = { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' };
+  const off = await t.post('/api/inputs/cam2/listener', { enabled: false }, bearer);
+  assert.equal(off.status, 200);
+  const body = (await off.json()).data;
+  assert.deepEqual(Object.keys(body).sort(), ['enabled', 'name', 'port']);
+  assert.equal(body.enabled, false);
+  assert.equal(t.inputs.find('cam2').enabled, false);
+  assert.equal((await t.post('/api/inputs/cam2/listener', { enabled: true }, bearer)).status, 200);
+  assert.equal(t.inputs.find('cam2').enabled, true); // restored for other tests in this file
+});
+
 test('mutating requests are audit-logged without bodies; reads are not', async () => {
   lines.info.length = 0;
   await t.post('/api/inputs/cam1/clip', { clip: 'secret-ish-clip' });

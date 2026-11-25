@@ -166,6 +166,21 @@ test('input config: add (auto port+passphrase), edit, regenerate, remove, guards
   assert.equal((await t.post('/api/config/inputs')).status, 400);
 });
 
+test('listener toggle: narrow payload, unknown input 404s, blocked while recording', async () => {
+  const on = await data(t.post('/api/inputs/cam2/listener', { enabled: true }));
+  assert.deepEqual(on, { name: 'cam2', port: 8898, enabled: true });
+  assert.equal(t.inputs.find('cam2').enabled, true);
+
+  const off = await data(t.post('/api/inputs/cam2/listener', { enabled: false }));
+  assert.deepEqual(off, { name: 'cam2', port: 8898, enabled: false });
+
+  assert.equal((await t.post('/api/inputs/cam9/listener', { enabled: true })).status, 404);
+
+  await t.post('/api/inputs/cam1/record/start');
+  assert.equal((await t.post('/api/inputs/cam1/listener', { enabled: false })).status, 409);
+  await t.post('/api/inputs/cam1/record/stop');
+});
+
 test('relay status is merged into input status', async () => {
   const t3 = await startTestApp({ relayStatus: async () => [{ name: 'cam1', state: 'connected', since: 'x', sessions: 2, lastError: null }] });
   try {

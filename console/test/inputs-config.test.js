@@ -17,7 +17,7 @@ test('generatePassphrase: 24 unambiguous alphanumerics, random', () => {
 
 test('validateInput normalizes and enforces rules', () => {
   const v = validateInput({ name: 'CAM2 ', port: '8898', passphrase: PP }, { ...range });
-  assert.deepEqual(v, { name: 'cam2', label: '', port: 8898, passphrase: PP, latencyMs: 1000, enabled: true });
+  assert.deepEqual(v, { name: 'cam2', label: '', port: 8898, passphrase: PP, latencyMs: 1000, enabled: false });
   const bad = [
     [{ name: '', port: 8898, passphrase: PP }, /name/],
     [{ name: 'a/b', port: 8898, passphrase: PP }, /name/],
@@ -30,6 +30,12 @@ test('validateInput normalizes and enforces rules', () => {
   const others = [{ name: 'cam1', port: 8897 }];
   assert.throws(() => validateInput({ name: 'cam1', port: 8898, passphrase: PP }, { others, ...range }), /already exists/);
   assert.throws(() => validateInput({ name: 'cam2', port: 8897, passphrase: PP }, { others, ...range }), /used by cam1/);
+});
+
+test('validateInput: enabled defaults false, explicit true/false both honored', () => {
+  assert.equal(validateInput({ name: 'cam', port: 8898, passphrase: PP }, { ...range }).enabled, false);
+  assert.equal(validateInput({ name: 'cam', port: 8898, passphrase: PP, enabled: true }, { ...range }).enabled, true);
+  assert.equal(validateInput({ name: 'cam', port: 8898, passphrase: PP, enabled: false }, { ...range }).enabled, false);
 });
 
 test('nextFreePort finds gaps and returns null when full', () => {

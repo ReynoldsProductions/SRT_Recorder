@@ -16,19 +16,36 @@ Open `http://<server>:3020` and log in as `engineer` with `C2C_CONSOLE_PASSWORD`
 
 What's exposed: the console (TCP `CONSOLE_PORT`) and the relay port range (UDP `RELAY_PORT_MIN`–`RELAY_PORT_MAX`).
 OvenMediaEngine's SRT (9999), API (8081) and LL-HLS (3333) stay on the internal Docker network. Keep it
-that way, because OME's SRT listener has no passphrase.
+that way — the relay's own backhaul passphrase (`OME_SRT_PASSPHRASE`) protects this hop, but it's still
+not meant to be reachable from outside the Docker network.
 
 ## Add a camera
 
 1. Console → **+ Add input**: name (`cam2`), optional label, port (pre-filled from the range), latency.
+   New inputs start **disabled** — a provisioned port has no listener on it until you turn it on.
 2. Open the card's **Camera setup** and enter the values on the camera:
    - **Sony FX2 (Creators' App → streaming settings):** URL `srt://<server-ip>` (**nothing after the IP**), Port = the input's port,
      Encryption AES-128, Pass phrase = **Reveal**, ARC Off for recording tests, Video Codec MPEG-4/AVC.
    - Other SRT callers: `srt://<server-ip>:<port>?passphrase=<passphrase>` (stream ID not needed).
-3. Start output on the camera. The card should show **Camera connected to relay** and then **Signal**.
+3. Turn the listener on (see below), then start output on the camera. The card should show
+   **Camera connected to relay** and then **Signal**.
 
 **New passphrase** and **Remove** are under Camera setup. Changing a camera's port, latency or enabled state, its passphrase, or
 removing it is refused while that input is recording.
+
+## Start/stop a listener
+
+Each input's SRT listener is independent of recording — enabling it just opens that port to accept the
+camera's connection; it doesn't start a take. Three equivalent ways to flip it:
+
+- **Console UI** — the card's enabled toggle (Basic auth).
+- **API** — `POST /api/inputs/<name>/listener {"enabled": true}` (Basic *or* Bearer — this route never
+  returns a passphrase, unlike `/api/config/*`, so it's safe for the Companion API key to call).
+- **Bitfocus Companion** — call the same endpoint via a generic HTTP action, or a module preset once one's
+  added (not yet built; the API route above is what it would call).
+
+Leaving listeners off between shoots is the default and intended state — see `docs/DMZ_RELAY_PLAN.md`
+for why (an idle port with nothing listening is lower-risk than one with an always-on SRT parser).
 
 ## Record
 
@@ -58,6 +75,7 @@ Variables include `<input>_button_line` (`● T002 00:01:23` while recording, `n
 |---|---|---|
 | Console password / API key | `.env` | Edit, then `docker compose up -d c2c-console`. Update Companion's API key |
 | OME API token | `.env` `OME_API_TOKEN` (substituted into `Server.xml`) | Edit, then `docker compose up -d --force-recreate ovenmediaengine c2c-console`. This restarts OME: stop recordings first |
+| OME SRT backhaul passphrase | `.env` `OME_SRT_PASSPHRASE` (substituted into `Server.xml` and passed to `c2c-relay`) | Edit, then `docker compose up -d --force-recreate ovenmediaengine c2c-relay`. Drops every connected camera (the relay restarts); do this between shoots |
 | Camera SRT passphrase | `data/inputs.json` | Console → Camera setup → **New passphrase**, then update the camera |
 
 Use `docker compose up -d` (not `restart`) after editing `.env` so the containers get the new values.

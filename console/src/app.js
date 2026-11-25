@@ -123,8 +123,19 @@ export function createApp({ config, recording, inputs, state, listRecordings, pu
     return inputsConfigView();
   }
 
+  // Toggling the listener is deliberately reachable by the Bearer (Companion) key: unlike
+  // /api/config/*, it never reads or returns a passphrase, only name/port/enabled.
+  async function setListener(name, enabled) {
+    if (!inputs.find(name)) throw new HttpError(404, `unknown input: ${name}`);
+    await guardNotRecording(name, 'changing the listener');
+    await inputs.update(name, { enabled: Boolean(enabled) });
+    const updated = inputs.find(name);
+    log.info(`[inputs] listener ${name} ${updated.enabled ? 'enabled' : 'disabled'}`);
+    return { name: updated.name, port: updated.port, enabled: updated.enabled };
+  }
+
   async function inputRoutes(pathname, req) {
-    const m = pathname.match(/^\/api\/inputs\/([^/]+)\/(record\/start|record\/stop|record\/toggle|clip|take)$/);
+    const m = pathname.match(/^\/api\/inputs\/([^/]+)\/(record\/start|record\/stop|record\/toggle|clip|take|listener)$/);
     if (!m) throw new HttpError(404, 'not found');
     const name = decodeURIComponent(m[1]);
     const body = await readJson(req);
@@ -133,6 +144,7 @@ export function createApp({ config, recording, inputs, state, listRecordings, pu
       case 'record/stop': return recording.stop(name);
       case 'record/toggle': return recording.toggle(name, { clip: body.clip });
       case 'clip': return { clip: await recording.setClip(name, body.clip) };
+      case 'listener': return setListener(name, body.enabled);
       default: return { nextTake: await recording.setNextTake(name, Number(body.next)) };
     }
   }

@@ -7,7 +7,9 @@ import { randomInt } from 'node:crypto';
 
 export const NAME_RE = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 const PASS_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'; // no look-alikes (0/O, 1/l/I)
-export const DEFAULTS = Object.freeze({ latencyMs: 1000, enabled: true });
+// New inputs start disabled: a provisioned-but-unassigned port should have no listener on it
+// (nothing to parse, nothing to scan) until an operator deliberately turns it on for a shoot.
+export const DEFAULTS = Object.freeze({ latencyMs: 1000, enabled: false });
 
 export class InputConfigError extends Error {}
 

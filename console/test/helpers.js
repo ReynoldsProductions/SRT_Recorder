@@ -47,7 +47,9 @@ export async function startTestApp({ clock, listRecordings = async () => [], rel
   const state = createStateStore(join(dir, 'state.json'), { log: quietLog });
   await state.load();
   await state.update({ shoot: 'Day1' });
-  const inputs = createInputsStore(join(dir, 'inputs.json'), { portMin: 8897, portMax: 8899, seed: [{ name: 'cam1', port: 8897, passphrase: PP }, { name: 'cam2', port: 8898, passphrase: PP }], log: quietLog });
+  // enabled: true — these fixtures represent already-configured, active cameras. The
+  // enabled-defaults-to-false behavior itself is covered in inputs-config.test.js.
+  const inputs = createInputsStore(join(dir, 'inputs.json'), { portMin: 8897, portMax: 8899, seed: [{ name: 'cam1', port: 8897, passphrase: PP, enabled: true }, { name: 'cam2', port: 8898, passphrase: PP, enabled: true }], log: quietLog });
   await inputs.load();
   const recording = createRecordingService({ config, ome: fakeOme(ome), state, inputs, relayStatus, clock, log: quietLog });
   const fetchImpl = async (u) => new Response(`proxied ${u}`, { status: 200, headers: { 'content-type': 'application/vnd.apple.mpegurl' } });
