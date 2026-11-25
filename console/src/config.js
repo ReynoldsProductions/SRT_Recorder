@@ -34,7 +34,13 @@ export function loadConfig(env = process.env) {
   if (password.length < 12) throw new ConfigError('CONSOLE_PASSWORD must be at least 12 characters');
   if (env.API_KEY && env.API_KEY.length < 24) throw new ConfigError('API_KEY must be at least 24 characters');
   const port = Number(env.PORT ?? 3020);
-  if (!Number.isInteger(port)) throw new ConfigError('PORT must be an integer');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError('PORT must be an integer 1-65535');
+  const relayPortMin = Number(env.RELAY_PORT_MIN || 8897);
+  const relayPortMax = Number(env.RELAY_PORT_MAX || 8912);
+  const validPort = (n) => Number.isInteger(n) && n >= 1 && n <= 65535;
+  if (!validPort(relayPortMin) || !validPort(relayPortMax) || relayPortMin > relayPortMax) {
+    throw new ConfigError('RELAY_PORT_MIN/RELAY_PORT_MAX must be ports 1-65535 with MIN <= MAX');
+  }
   return Object.freeze({
     port,
     consoleUser: env.CONSOLE_USER || 'engineer',
@@ -51,12 +57,14 @@ export function loadConfig(env = process.env) {
       Object.entries(env).filter(([k]) => k.startsWith('SEED_PASSPHRASE_')).map(([k, v]) => [k.slice(16).toLowerCase(), v]),
     )),
     inputsFile: env.INPUTS_FILE || '/data/inputs.json',
-    relayPortMin: Number(env.RELAY_PORT_MIN || 8897),
-    relayPortMax: Number(env.RELAY_PORT_MAX || 8912),
+    relayPortMin,
+    relayPortMax,
     relayStatusUrl: (env.RELAY_STATUS_URL || '').replace(/\/+$/, '') || null,
     publicHost: env.PUBLIC_HOST || '',
     recordingsShare: env.RECORDINGS_SHARE || '',
     apiKey: env.API_KEY || null,
+    // Set to 1 only when the console sits behind your own reverse proxy (see docs/OPERATIONS.md).
+    trustProxy: ['1', 'true'].includes(String(env.TRUST_PROXY ?? '').toLowerCase()),
     staleAfterMs: Number(env.STALE_AFTER_MS ?? 5000),
   });
 }
