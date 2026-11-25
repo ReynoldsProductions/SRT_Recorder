@@ -105,6 +105,37 @@ per-camera — this hop isn't camera-identifying, the stream ID already is) via 
 plus the matching passphrase requirement on OvenMediaEngine's `Server.xml` SRT listener
 (currently unverified/absent — tracked in the lab's own `docs/FINDINGS.md` gaps).
 
+## Target platforms
+
+**Primary: x86_64**, on the Celeron box earmarked for this (see the DMZ machine plan doc).
+**Secondary, must stay testable: ARM64**, on a Raspberry Pi 4 Tom already has on hand. Tom is
+also evaluating ARM SBCs for a few other, isolated DMZ services unrelated to this relay — this
+section is about keeping *this* service portable, not committing it to ARM as a destination.
+
+What that requires in practice:
+
+- **No code change needed for cross-building.** Checked the three pinned base-image digests in
+  `console/Dockerfile` and `console/Dockerfile.relay` (`node@sha256:...` ×2,
+  `linuxserver/ffmpeg@sha256:...`) with `docker buildx imagetools inspect` — all three are
+  multi-arch manifest lists that already include a `linux/arm64` (or `arm64/v8`) entry, not
+  single-platform digests. `docker build`/`compose build` on a Pi resolves the right platform
+  automatically.
+- **The Pi 4 must run a 64-bit OS** (Raspberry Pi OS 64-bit, Ubuntu Server arm64, etc.). None of
+  the inspected manifests include a 32-bit `linux/arm/v7` entry — the legacy 32-bit Raspberry Pi
+  OS image won't resolve to a supported platform at all.
+- **Genuinely unverified, and this is the one that matters:** whether the arm64 build of
+  `linuxserver/ffmpeg` carries the same libsrt behavior as the x86_64 build this project is
+  already pinned to specifically *because* of a version-specific handshake bug (Alpine's libsrt
+  1.5.3 fails the Sony FX2's handshake; `linuxserver/ffmpeg`'s libsrt 1.5.7 doesn't — see
+  `docs/FINDINGS.md`). Multi-arch images are normally built from the same upstream source per
+  tag, so it's *likely* fine, but "likely" isn't good enough for a bug this specific — run the
+  same FX2 handshake test on the Pi before trusting it, don't assume parity from the tag match
+  alone.
+- Compute/RAM headroom is not a concern either way — the workload is light enough (stream-copy
+  only, ~11% of one x86 core and ~31MB RAM per camera measured on the lab's current hardware)
+  that a Pi 4's weaker per-core ARM performance still has large margin, even before any of this
+  gets near the Celeron's specs.
+
 ## Non-goals for this doc
 
 - The DMZ machine build itself (OS, nftables, VLAN, the UCG-Fiber firewall rule, Tailscale
@@ -115,11 +146,16 @@ plus the matching passphrase requirement on OvenMediaEngine's `Server.xml` SRT l
 
 ## Rollout order
 
-1. Flip the `enabled` default (gap 1) — trivial, no behaviour change for existing inputs.
-2. Add the scoped listener-toggle route (gap 2) and a Companion preset for it.
-3. Add the backhaul passphrase (gap 4) to the existing lab setup first, while everything's
-   still on one host — cheaper to verify than doing it at the same time as the host split.
-4. Split the compose stack and build the config-sync endpoint (gap 3) once 1-3 are verified
-   locally.
-5. Seed the 6 ports (`cam1..cam6`, consecutive ports, `enabled: false`, no passphrase assigned
+1. ~~Flip the `enabled` default (gap 1).~~ **Done** — see PR #4.
+2. ~~Add the scoped listener-toggle route (gap 2).~~ **Done** (the route) — see PR #4. A
+   Companion module preset for it is not built; the raw API route already satisfies "start via
+   API," so this isn't blocking.
+3. ~~Add the backhaul passphrase (gap 4) to the existing lab setup first, while everything's
+   still on one host.~~ **Done** — see PR #4.
+4. Split the compose stack and build the config-sync endpoint (gap 3) — **not started**. Needs
+   a design decision first: the sync endpoint's own credential, separate from both the Basic
+   and Bearer auth that already exist.
+5. Run both target platforms (x86_64 and the Pi 4) through the same FX2 handshake test before
+   trusting either — not yet done on the Pi.
+6. Seed the 6 ports (`cam1..cam6`, consecutive ports, `enabled: false`, no passphrase assigned
    until a camera is actually scheduled) once the DMZ host itself exists.
