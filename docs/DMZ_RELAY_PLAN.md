@@ -152,9 +152,12 @@ What that requires in practice:
    API," so this isn't blocking.
 3. ~~Add the backhaul passphrase (gap 4) to the existing lab setup first, while everything's
    still on one host.~~ **Done** — see PR #4.
-4. Split the compose stack and build the config-sync endpoint (gap 3) — **not started**. Needs
-   a design decision first: the sync endpoint's own credential, separate from both the Basic
-   and Bearer auth that already exist.
+4. ~~Split the compose stack and build the config-sync endpoint (gap 3).~~ **Done** — `GET
+   /api/relay/inputs` behind its own read-only `SYNC_TOKEN` (optionally pinned to the DMZ host's
+   address with `SYNC_ALLOWED_IPS`), `console/src/relay/sync-source.js` on the relay side, and
+   [`deploy/dmz/`](../deploy/dmz/README.md) for the relay-only stack. Decision: a dedicated
+   read-only token (it can do nothing but read this one route), https required unless explicitly
+   overridden, every sync audit-logged.
 5. Run both target platforms (x86_64 and the Pi 4) through the same FX2 handshake test before
    trusting either — not yet done on the Pi.
 6. Seed the 6 ports (`cam1..cam6`, consecutive ports, `enabled: false`, no passphrase assigned

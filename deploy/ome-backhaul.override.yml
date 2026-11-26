@@ -1,0 +1,14 @@
+# Internal host only, and only when a relay runs on a SEPARATE host (the DMZ box).
+# OvenMediaEngine's SRT listener is otherwise reachable only inside the compose network. This
+# publishes it on ONE host address so the DMZ relay can reach it. Combine:
+#
+#   docker compose -f docker-compose.yml -f ome-backhaul.override.yml up -d
+#
+# Set OME_BACKHAUL_BIND in .env to the internal host's address on the interface the DMZ box reaches
+# (never 0.0.0.0), and firewall it to the DMZ host's address only. OME_SRT_PASSPHRASE (already
+# required by the base file) gates the stream even if the firewall rule is ever too wide.
+
+services:
+  ovenmediaengine:
+    ports:
+      - "${OME_BACKHAUL_BIND:?set OME_BACKHAUL_BIND in .env}:9999:9999/udp"

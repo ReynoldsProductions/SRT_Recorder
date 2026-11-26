@@ -21,10 +21,11 @@ export function checkBearer(header, apiKey) {
   return safeEqual(header.slice(7).trim(), apiKey);
 }
 
-// Returns 'bearer' | 'basic' | null.
+// Returns 'bearer' (API key) | 'sync' (relay config sync) | 'basic' | null.
 export function authenticate(headers, config) {
   const header = headers.authorization;
   if (checkBearer(header, config.apiKey)) return 'bearer';
+  if (checkBearer(header, config.syncToken)) return 'sync';
   if (checkBasicAuth(header, config.consoleUser, config.consolePassword)) return 'basic';
   return null;
 }

@@ -1,0 +1,49 @@
+# DMZ relay host: runs ONLY c2c-relay, the public-facing SRT listener. The console, OvenMediaEngine and
+# the recordings stay on the internal host. Plan: docs/DMZ_RELAY_PLAN.md. Setup: deploy/dmz/README.md.
+#
+#   cp .env.example .env   # fill in every CHANGE_ME
+#   docker compose up -d --build
+#
+# The relay holds NO inputs file. It polls the console's read-only sync endpoint for its input list,
+# so what Companion/the console says is enabled is exactly what listens here. All listeners default OFF.
+
+name: srt-relay-dmz
+
+services:
+  c2c-relay:
+    build:
+      context: ../../console
+      dockerfile: Dockerfile.relay
+    image: c2c-relay:0.3.0
+    container_name: c2c-relay
+    ports:
+      # One UDP port per camera. Only this range is published; the status port (8090) is not.
+      - "${RELAY_PORT_MIN:-8897}-${RELAY_PORT_MAX:-8902}:${RELAY_PORT_MIN:-8897}-${RELAY_PORT_MAX:-8902}/udp"
+    environment:
+      - RELAY_PORT_MIN=${RELAY_PORT_MIN:-8897}
+      - RELAY_PORT_MAX=${RELAY_PORT_MAX:-8902}
+      # Where the console's read-only sync endpoint lives (internal host). https unless you set
+      # SYNC_ALLOW_INSECURE_HTTP=1: the response carries every camera passphrase.
+      - SYNC_URL=${SYNC_URL:?set SYNC_URL in .env}
+      - SYNC_TOKEN=${SYNC_TOKEN:?set SYNC_TOKEN in .env}
+      - SYNC_ALLOW_INSECURE_HTTP=${SYNC_ALLOW_INSECURE_HTTP:-}
+      # Backhaul to OvenMediaEngine on the internal host, protected by its own passphrase.
+      - OME_SRT_HOST=${OME_SRT_HOST:?set OME_SRT_HOST in .env}
+      - OME_SRT_PORT=${OME_SRT_PORT:-9999}
+      - OME_SRT_PASSPHRASE=${OME_SRT_PASSPHRASE:?set OME_SRT_PASSPHRASE in .env}
+    # Public-facing: nothing it doesn't need. It only reads the network and spawns ffmpeg.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 1g
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -149,6 +149,20 @@ export function createApp({ config, recording, inputs, state, listRecordings, pu
     }
   }
 
+  // The sync token is for exactly one thing: the DMZ relay reading its input list (which carries
+  // every camera passphrase). Anything else it asks for is refused, so a stolen relay-side token
+  // can't record, toggle listeners, read the UI or change the registry.
+  function syncRoute(req, res, pathname, ip) {
+    const allowed = config.syncAllowedIps ?? [];
+    if (allowed.length && !allowed.includes(ip.replace(/^::ffff:/, ''))) {
+      log.error(`[auth] sync token used from ${ip}, not in SYNC_ALLOWED_IPS`);
+      throw new HttpError(403, 'address not allowed');
+    }
+    if (req.method !== 'GET' || pathname !== '/api/relay/inputs') throw new HttpError(403, 'sync token is limited to GET /api/relay/inputs');
+    log.info(`[audit] sync ${ip} GET ${pathname}`);
+    return ok(res, { inputs: inputs.list() });
+  }
+
   async function routeApi(req, res, url, authKind, ip) {
     const { pathname } = url;
     // The API key exists for Companion (status + record control). It must not read or change the
@@ -213,6 +227,9 @@ export function createApp({ config, recording, inputs, state, listRecordings, pu
       return send(res, 401, 'authentication required', { 'WWW-Authenticate': 'Basic realm="c2c-console", charset="UTF-8"' });
     }
     throttle.succeed(ip);
+
+    if (authKind === 'sync') return syncRoute(req, res, pathname, ip);
+    if (pathname === '/api/relay/inputs') throw new HttpError(403, 'only the relay sync token may read the relay input list');
 
     if (pathname.startsWith('/api/')) return routeApi(req, res, url, authKind, ip);
 

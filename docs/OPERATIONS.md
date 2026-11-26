@@ -85,6 +85,9 @@ Use `docker compose up -d` (not `restart`) after editing `.env` so the container
 - **People** use HTTP Basic (`engineer` / `C2C_CONSOLE_PASSWORD`). **Companion** uses the Bearer `C2C_API_KEY`.
 - The API key is limited to status and record control: every `/api/config/*` route (input registry, which returns
   the camera SRT passphrases) answers 403 to it. Manage inputs from the browser.
+- **Relay sync token (DMZ host):** `C2C_SYNC_TOKEN` is a third credential, read-only and single-purpose: it opens
+  `GET /api/relay/inputs` (the input list, passphrases included) and 403s everywhere else. The API key and console
+  login cannot read that route. Pin it with `C2C_SYNC_ALLOWED_IPS`. See [`deploy/dmz/README.md`](../deploy/dmz/README.md).
 - **Lockout:** 8 failed logins from one address within 10 minutes locks that address out (429) for 5 minutes.
   The counter is in memory, so restarting `c2c-console` clears it.
 - **Audit log:** every state-changing API call is logged as `[audit] <basic|bearer> <ip> <METHOD> <path>`, failed
