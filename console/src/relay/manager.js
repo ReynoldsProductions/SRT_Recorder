@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { parseInputsFile } from '../inputs-config.js';
 import { createSupervisor } from './supervisor.js';
+import { createHttpInputsSource } from './sync-source.js';
 
 export function createManager({ readInputs, target, makeSupervisor = createSupervisor, log = console }) {
   const running = new Map(); // name -> { sig, sup }
@@ -56,7 +57,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     app: process.env.OME_APP || 'app',
     passphrase: process.env.OME_SRT_PASSPHRASE || undefined,
   };
-  const manager = createManager({ readInputs: async () => parseInputsFile(await readFile(file, 'utf8'), range), target });
+  // Same host as the console: read the shared inputs file. DMZ host: set SYNC_URL (+ SYNC_TOKEN) and the
+  // list is pulled from the console's read-only sync endpoint instead; the relay never has a local copy.
+  const readInputs = process.env.SYNC_URL
+    ? createHttpInputsSource({
+      url: process.env.SYNC_URL,
+      token: process.env.SYNC_TOKEN,
+      range,
+      allowInsecureHttp: process.env.SYNC_ALLOW_INSECURE_HTTP === '1',
+      timeoutMs: Number(process.env.SYNC_TIMEOUT_MS || 5000),
+    })
+    : async () => parseInputsFile(await readFile(file, 'utf8'), range);
+  const manager = createManager({ readInputs, target });
   await manager.reconcile();
   setInterval(manager.reconcile, Number(process.env.RECONCILE_MS || 2000));
   const port = Number(process.env.STATUS_PORT || 8090);
@@ -64,7 +76,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const body = req.url === '/status' ? manager.status() : req.url === '/healthz' ? { status: 'ok' } : null;
     res.writeHead(body ? 200 : 404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(body ?? { error: 'not found' }));
-  }).listen(port, () => console.info(`[manager] watching ${file}, status on :${port}, ports ${range.portMin}-${range.portMax}`));
+  }).listen(port, () => console.info(`[manager] ${process.env.SYNC_URL ? `syncing from ${new URL(process.env.SYNC_URL).origin}` : `watching ${file}`}, status on :${port}, ports ${range.portMin}-${range.portMax}`));
   const shutdown = () => {
     manager.stopAll();
     setTimeout(() => process.exit(0), 500);

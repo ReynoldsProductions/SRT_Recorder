@@ -33,6 +33,11 @@ export function loadConfig(env = process.env) {
   const password = required(env, 'CONSOLE_PASSWORD');
   if (password.length < 12) throw new ConfigError('CONSOLE_PASSWORD must be at least 12 characters');
   if (env.API_KEY && env.API_KEY.length < 24) throw new ConfigError('API_KEY must be at least 24 characters');
+  // Read-only credential for the DMZ relay's config sync. Its own secret: it can read every camera
+  // passphrase, so it must not be reusable as (or derivable from) the API key or console password.
+  if (env.SYNC_TOKEN && env.SYNC_TOKEN.length < 32) throw new ConfigError('SYNC_TOKEN must be at least 32 characters');
+  if (env.SYNC_TOKEN && env.SYNC_TOKEN === env.API_KEY) throw new ConfigError('SYNC_TOKEN must differ from API_KEY');
+  if (env.SYNC_TOKEN && env.SYNC_TOKEN === password) throw new ConfigError('SYNC_TOKEN must differ from CONSOLE_PASSWORD');
   const port = Number(env.PORT ?? 3020);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError('PORT must be an integer 1-65535');
   const relayPortMin = Number(env.RELAY_PORT_MIN || 8897);
@@ -63,6 +68,9 @@ export function loadConfig(env = process.env) {
     publicHost: env.PUBLIC_HOST || '',
     recordingsShare: env.RECORDINGS_SHARE || '',
     apiKey: env.API_KEY || null,
+    syncToken: env.SYNC_TOKEN || null,
+    // Optional allowlist of client addresses the sync token may be used from (the relay host).
+    syncAllowedIps: Object.freeze((env.SYNC_ALLOWED_IPS || '').split(',').map((a) => a.trim()).filter(Boolean)),
     // Set to 1 only when the console sits behind your own reverse proxy (see docs/OPERATIONS.md).
     trustProxy: ['1', 'true'].includes(String(env.TRUST_PROXY ?? '').toLowerCase()),
     staleAfterMs: Number(env.STALE_AFTER_MS ?? 5000),

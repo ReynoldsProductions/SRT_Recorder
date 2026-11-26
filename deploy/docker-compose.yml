@@ -29,6 +29,9 @@ services:
     environment:
       - CONSOLE_PASSWORD=${C2C_CONSOLE_PASSWORD:?set C2C_CONSOLE_PASSWORD in .env}
       - API_KEY=${C2C_API_KEY:-}
+      # Read-only credential for a relay on another host (DMZ). Unset = sync endpoint closed.
+      - SYNC_TOKEN=${C2C_SYNC_TOKEN:-}
+      - SYNC_ALLOWED_IPS=${C2C_SYNC_ALLOWED_IPS:-}
       - OME_API_URL=http://ovenmediaengine:8081
       - OME_ACCESS_TOKEN=${OME_API_TOKEN}
       - OME_PREVIEW_URL=http://ovenmediaengine:3333

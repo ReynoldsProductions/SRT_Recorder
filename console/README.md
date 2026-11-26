@@ -26,6 +26,8 @@ No npm dependencies (Node built-ins only). hls.js 1.5.20 is vendored in `public/
 | `CONSOLE_PASSWORD` | yes | — | HTTP Basic password for user `CONSOLE_USER` (default `engineer`), at least 12 chars |
 | `API_KEY` | no | — | Bearer key for machine clients (Companion), at least 24 chars. Refused on `/api/config/*` |
 | `TRUST_PROXY` | no | off | `1` only behind your own reverse proxy: use the rightmost `X-Forwarded-For` as the client address for throttling/audit |
+| `SYNC_TOKEN` | no | — | Read-only token for a relay on another host (DMZ). At least 32 chars, different from the password and API key. Opens only `GET /api/relay/inputs`. Unset = endpoint closed |
+| `SYNC_ALLOWED_IPS` | no | any | Comma list of addresses the sync token may be used from |
 | `OME_API_URL`, `OME_ACCESS_TOKEN` | yes | — | OME REST API (`http://ovenmediaengine:8081`) + its `<AccessToken>` |
 | `OME_PREVIEW_URL` | no | — | OME LL-HLS base (`http://ovenmediaengine:3333`) to enable the preview |
 | `INPUTS_FILE` | no | `/data/inputs.json` | Input registry (shared read-only with `c2c-relay`). Mode 0600 |
